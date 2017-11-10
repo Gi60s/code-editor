@@ -1,10 +1,10 @@
-.code-editor a,
-.code-editor a:visited {
+.code-editor.link {
     display: block;
     color: #000;
     text-decoration: none;
+    cursor: pointer;
 }
-.code-editor a:hover {
+.code-editor.link:hover {
     background-color: #2557b4;
     color: #FFF;
 }
@@ -16,7 +16,7 @@
 
 /* context menu */
 
-.code-editor-context-menu {
+.code-editor.context-menu {
     position: absolute;
     display: inline-block;
     border: 1px solid #CCC;
@@ -25,38 +25,41 @@
     z-index: 10000;
     background: #FFF;
 }
-.code-editor-context-menu a {
+.code-editor.context-menu span {
     color: #000;
     text-decoration: none;
     padding: 5px 15px;
     display: block;
 }
-.code-editor-context-menu a:hover {
+.code-editor.context-menu  span:hover {
      background-color: #2557b4;
      color: #FFF;
  }
 
-.code-editor.file-structure {
+/* file structure display directory and file names in hierarchy */
+.code-editor.file-structure.container {
     background: #DDD;
     width: 200px;
     overflow: auto;
 }
 
-.code-editor.file-structure a,
-.code-editor.file-structure a:hover,
-.code-editor.file-structure a:visited {
-    padding: 2px 0;
+/* leafs are files and branches are directories */
+.code-editor.file-structure.leaf,
+.code-editor.file-structure.branch {
+
 }
 
-.code-editor.file-structure ul {
-    padding: 0 0 0 10px;
+/* spacers are used to indent each item in the directory structure according to their depth */
+.code-editor.file-structure.spacer {
+    display: inline-block;
+    width: 16px;
+    padding: 0;
     margin: 0;
 }
-.code-editor.file-structure li {
-    width: 100%;
-}
 
-.code-editor-prompt {
+
+
+.code-editor.prompt {
     position: absolute;
     top: 0;
     left: 0;
@@ -65,7 +68,7 @@
     background: rgba(0, 0, 0, .4);
     cursor: not-allowed;
 }
-.code-editor-prompt form {
+.code-editor.prompt form {
     position: relative;
     margin: auto;
     display: inline-block;
@@ -76,16 +79,16 @@
     padding: 20px;
     max-width: 75%;
 }
-.code-editor-prompt form label {
+.code-editor.prompt form label {
     display: block;
 }
-.code-editor-prompt form input {
+.code-editor.prompt form input {
     display: block;
     border: 1px solid #CCC;
     border-radius: 4px;
     padding: 4px 6px;
     margin: 8px 0;
 }
-.code-editor-prompt form button {
+.code-editor.prompt form button {
     margin-right: 10px;
 }

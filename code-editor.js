@@ -56,14 +56,12 @@
         // TODO: add rename and metadata buttons
 
         // add file structure element
-        const fileStructure = makeElement('div', 'code-editor file-structure');
+        const fileStructure = makeElement('div', 'code-editor file-structure container');
         element.appendChild(fileStructure);
 
         // add root directory to file structure element
         const directory = new Directory(this, 'root', {});
-        const ul = makeElement('div');
-        ul.appendChild(directory.element);
-        fileStructure.appendChild(ul);
+        fileStructure.appendChild(directory.element);
 
         var selected = directory;
         this.root = directory;
@@ -140,6 +138,7 @@
         const editor = this;
 
         const form = makeElement('form');
+        form.setAttribute('autocomplete', 'off');
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             callback(true, input.value);
@@ -170,11 +169,12 @@
             editor.element.removeChild(container);
         });
 
-        const container = makeElement('div', 'code-editor-prompt');
+        const container = makeElement('div', 'code-editor prompt');
         container.appendChild(form);
 
         this.element.appendChild(container);
         input.focus();
+        input.select();
     };
 
 
@@ -189,19 +189,18 @@
         this.editor = editor;
 
         // create clickable label
-        const a = makeElement('a', 'code-editor file-structure leaf ' + this.ext);
-        a.href = '#';
+        const a = makeElement('span', 'code-editor file-structure leaf link ' + this.ext);
         a.addEventListener('click', function(e) {
             e.preventDefault();
             file.select();
         });
 
         // spacer block
-        const pad = makeElement('span');
+        const pad = makeElement('span', 'code-editor file-structure padding');
         a.appendChild(pad);
 
         // label
-        const label = makeElement('span', '', name);
+        const label = makeElement('span', 'code-editor file-structure label', name);
         a.appendChild(label);
 
         // context
@@ -307,21 +306,63 @@
         this.editor = editor;
         this._items = {};
 
-        const a = makeElement('a', 'code-editor file-structure-branch');
-        a.href = '#';
+        const a = makeElement('span', 'code-editor file-structure branch link');
         a.addEventListener('click', function(e) {
             e.preventDefault();
             directory.select();
         });
 
-        const pad = makeElement('span');
+        const pad = makeElement('span', 'code-editor file-structure padding');
         a.appendChild(pad);
 
-        const label = makeElement('span', '', name);
+        const label = makeElement('span', 'code-editor file-structure label', name);
         a.appendChild(label);
 
-        const element = makeElement('div');
+        const element = makeElement('div', 'code-editor file-structure branch-container');
         element.appendChild(a);
+
+        // context
+        makeContextMenu(a, [
+            {
+                label: 'New File',
+                handler: function() {
+                    editor.prompt('New file name:', directory.untitled(), function(submitted, value) {
+                        if (submitted) { // noinspection JSAnnotator
+                            const file = new File(editor, value);
+                            directory.add(file);
+                        }
+                    });
+                }
+            },
+            {
+                label: 'New Directory',
+                handler: function() {
+                    editor.prompt('New directory name:', directory.untitled(), function(submitted, value) {
+                        if (submitted) { // noinspection JSAnnotator
+                            const dir = new Directory(editor, value);
+                            directory.add(dir);
+                        }
+                    });
+                }
+            },
+            {
+                label: 'Rename',
+                handler: function() {
+                    editor.prompt('New file name:', name, function(submitted, value) {
+                        if (submitted) { // noinspection JSAnnotator
+                            directory.name = value;
+                        }
+                    });
+                }
+            },
+            {
+                label: 'Delete',
+                handler: function() {
+                    const parent = directory.element.parent.codeEditor;
+                    parent.remove(directory);
+                }
+            }
+        ]);
 
         Object.defineProperties(this, {
 
@@ -338,8 +379,8 @@
                         depth--;
                     }
 
-                    this._items.forEach(function(item) {
-                        item.depth = value + 1;
+                    Object.keys(directory._items).forEach(function(key) {
+                        directory._items[key].depth = value + 1;
                     });
                 }
             },
@@ -416,7 +457,7 @@
                 if (i === length - 1) {
                     this.element.appendChild(item.element);
                 } else {
-                    this.element.insertBefore(item.element, this._ul.children[i]);
+                    this.element.insertBefore(item.element, this.element.children[i]);
                 }
             }
         }
@@ -458,7 +499,7 @@
     }
 
     function makeContextMenu(target, config) {
-        const container = makeElement('div', 'code-editor-context-menu');
+        const container = makeElement('div', 'code-editor context-menu');
         const body = document.body;
 
         function remove() {
@@ -466,11 +507,8 @@
             body.removeEventListener('click', remove);
         }
 
-        body.addEventListener('click', remove);
-
         config.forEach(function(item) {
-            const el = makeElement('a', '', item.label);
-            el.href = '#';
+            const el = makeElement('span', '', item.label);
             el.addEventListener('click', function(e) {
                 e.preventDefault();
                 remove();
@@ -485,18 +523,20 @@
             container.style.left = e.clientX + 'px';
             container.style.top = e.clientY + 'px';
             body.appendChild(container);
+
+            body.addEventListener('click', remove);
         });
     }
 
     function makeElement(tag, className, innerHTML) {
         const el = document.createElement(tag);
-        el.className = className || '';
+        if (className) el.className = className;
         el.innerHTML = innerHTML || '';
         return el;
     }
 
     function spacer(className) {
-        const el = makeElement('span', 'code-editor spacer');
+        const el = makeElement('span', 'code-editor file-structure spacer');
         if (className) el.className += ' ' + className;
         return el;
     }
@@ -512,6 +552,7 @@
             }
         });
         el.className = ar.join(' ');
+        if (!el.className) el.removeAttribute('class');
     }
 
 }).call(this);
