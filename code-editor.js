@@ -61,12 +61,14 @@
 
         // add root directory to file structure element
         const directory = new Directory(this, 'root', {});
+        directory.expand();
+        directory.selected = true;
         fileStructure.appendChild(directory.element);
 
         var selected = directory;
         this.root = directory;
 
-        this.on('select', function() {
+        this.on('select', function(e) {
             const isFile = this instanceof File;
 
             disabled(newFile, isFile);
@@ -75,8 +77,9 @@
             // root directory cannot be deleted
             deleteItem.disabled = this === directory;
 
-            toggleClass(selected.element, 'selected', false);
-            toggleClass(this.element, 'selected', true);
+            selected.selected = false;
+            this.selected = true;
+
             selected = this;
         });
 
@@ -189,15 +192,22 @@
         this.editor = editor;
 
         // create clickable label
-        const a = makeElement('span', 'code-editor file-structure leaf link ' + this.ext);
+        const a = makeElement('span', 'code-editor file-structure leaf link');
+        a.codeEditor = this;
         a.addEventListener('click', function(e) {
             e.preventDefault();
-            file.select();
+            editor.emit('select', this, e);
         });
 
         // spacer block
         const pad = makeElement('span', 'code-editor file-structure padding');
         a.appendChild(pad);
+
+        const noTriangle = makeElement('span', 'code-editor no-triangle');
+        a.appendChild(noTriangle);
+
+        const icon = makeElement('span', extIcon(ext(name)));
+        a.appendChild(icon);
 
         // label
         const label = makeElement('span', 'code-editor file-structure label', name);
@@ -218,7 +228,7 @@
             {
                 label: 'Delete',
                 handler: function() {
-                    const parent = file.element.parent.codeEditor;
+                    const parent = file.element.parentNode.codeEditor;
                     parent.remove(file);
                 }
             }
@@ -243,11 +253,11 @@
                 get: function() { return pad.childNodes.length; },
                 set: function(value) {
                     var depth = pad.childNodes.length;
-                    while (value > depth) {
+                    while (value > depth - 1) {
                         pad.appendChild(spacer());
                         depth++;
                     }
-                    while (value < depth) {
+                    while (value < depth - 1) {
                         pad.removeChild(pad.firstChild);
                         depth--;
                     }
@@ -260,8 +270,7 @@
 
             ext: {
                 get: function() {
-                    const index = fileName.lastIndexOf('.');
-                    return index === -1 ? '' : fileName.substr(index + 1);
+                    return ext(filename);
                 }
             },
 
@@ -287,14 +296,17 @@
                         previous: prev
                     });
                 }
+            },
+
+            selected: {
+                get: function() { return hasClass(a, 'selected') },
+                set: function(select) {
+                    toggleClass(a, 'selected', select);
+                }
             }
 
         });
     }
-
-    File.prototype.select = function() {
-        this.editor.emit('select', this);
-    };
 
 
     function Directory(editor, name, metadata) {
@@ -309,17 +321,27 @@
         const a = makeElement('span', 'code-editor file-structure branch link');
         a.addEventListener('click', function(e) {
             e.preventDefault();
-            directory.select();
+            editor.emit('select', this, e);
         });
 
         const pad = makeElement('span', 'code-editor file-structure padding');
         a.appendChild(pad);
 
+        const triangle = makeElement('span', 'icon-right-dir');
+        a.appendChild(triangle);
+        triangle.addEventListener('click', function() {
+            directory.expanded = !directory.expanded;
+        });
+
+        const icon = makeElement('span', 'icon-folder');
+        a.appendChild(icon);
+
         const label = makeElement('span', 'code-editor file-structure label', name);
         a.appendChild(label);
 
-        const element = makeElement('div', 'code-editor file-structure branch-container');
+        const element = makeElement('div', 'code-editor file-structure branch-container empty');
         element.appendChild(a);
+        element.codeEditor = this;
 
         // context
         makeContextMenu(a, [
@@ -348,7 +370,7 @@
             {
                 label: 'Rename',
                 handler: function() {
-                    editor.prompt('New file name:', name, function(submitted, value) {
+                    editor.prompt('New directory name:', name, function(submitted, value) {
                         if (submitted) { // noinspection JSAnnotator
                             directory.name = value;
                         }
@@ -358,7 +380,7 @@
             {
                 label: 'Delete',
                 handler: function() {
-                    const parent = directory.element.parent.codeEditor;
+                    const parent = directory.element.parentNode.codeEditor;
                     parent.remove(directory);
                 }
             }
@@ -390,16 +412,18 @@
             },
 
             expanded: {
-                get: function() { return ul.className.split(/ +/).indexOf('expanded') !== -1 },
+                get: function() { return element.className.split(/ +/).indexOf('expanded') !== -1 },
                 set: function(value) {
                     const prev = directory.expanded;
                     value = !!value;
 
                     if (prev !== value) {
-                        ul.className = ul.className.split(/ +/)
+                        element.className = element.className.split(/ +/)
                             .filter(function(value) { return value !== 'expanded' })
                             .join(' ');
-                        if (value) ul.className += ' expanded';
+                        if (value) element.className += ' expanded';
+                        toggleClass(triangle, 'icon-right-dir', !value);
+                        toggleClass(triangle, 'icon-down-dir', value);
 
                         editor.emit(value ? 'expand' : 'collapse', directory);
                     }
@@ -429,6 +453,13 @@
                         previous: prev
                     });
                 }
+            },
+
+            selected: {
+                get: function() { return hasClass(a, 'selected') },
+                set: function(select) {
+                    toggleClass(a, 'selected', select);
+                }
             }
 
         });
@@ -452,9 +483,9 @@
             return a.name < b.name ? -1 : 1
         });
         var i;
-        for (i = 0; i < length; i++) {
-            if (keys[i] === item.name) {
-                if (i === length - 1) {
+        for (i = 1; i <= length; i++) {
+            if (keys[i - 1] === item.name) {
+                if (i === length) {
                     this.element.appendChild(item.element);
                 } else {
                     this.element.insertBefore(item.element, this.element.children[i]);
@@ -463,6 +494,13 @@
         }
 
         this.editor.emit('add', this, item);
+
+        if (Object.keys(this._items).length === 1) {
+            toggleClass(this.element, 'empty', false);
+            this.editor.emit('not-empty', this);
+        }
+
+        this.expand();
     };
 
     Directory.prototype.collapse = function() {
@@ -476,11 +514,13 @@
     Directory.prototype.remove = function(item) {
         item.element.parentNode.removeChild(item.element);
         delete this._items[item.name];
-        this.editor.emit('remove', this, item);
-    };
 
-    Directory.prototype.select = function() {
-        this.editor.emit('select', this);
+        this.editor.emit('remove', this, item);
+
+        if (Object.keys(this._items).length === 0) {
+            toggleClass(this.element, 'empty', true);
+            this.editor.emit('empty', this);
+        }
     };
 
     Directory.prototype.untitled = function() {
@@ -498,6 +538,38 @@
         toggleClass(el, 'disabled', disabled);
     }
 
+    function ext(fileName) {
+        const index = fileName.lastIndexOf('.');
+        return index === -1 ? '' : fileName.substr(index + 1);
+    }
+
+    function extIcon(ext) {
+        switch (ext) {
+            case 'css':
+            case 'html':
+            case 'js':
+            case 'sass':
+            case 'scss':
+            case 'ts':
+                return 'icon-file-code';
+            case 'bmp':
+            case 'gif':
+            case 'jpg':
+            case 'jpeg':
+            case 'png':
+                return 'icon-file-image';
+            case 'zip':
+            case 'tar':
+                return 'icon-file-archive';
+            default:
+                return 'icon-doc';
+        }
+    }
+
+    function hasClass(element, className) {
+        return element.className.split(/ +/).indexOf(className) !== -1;
+    }
+
     function makeContextMenu(target, config) {
         const container = makeElement('div', 'code-editor context-menu');
         const body = document.body;
@@ -508,7 +580,7 @@
         }
 
         config.forEach(function(item) {
-            const el = makeElement('span', '', item.label);
+            const el = makeElement('span', 'code-editor link', item.label);
             el.addEventListener('click', function(e) {
                 e.preventDefault();
                 remove();
@@ -519,7 +591,7 @@
 
         target.addEventListener('contextmenu', function(e) {
             e.preventDefault();
-            console.log(e);
+
             container.style.left = e.clientX + 'px';
             container.style.top = e.clientY + 'px';
             body.appendChild(container);
